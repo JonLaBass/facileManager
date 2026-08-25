@@ -221,6 +221,7 @@ function sanitize($data, $replace = null) {
 		return $data;
 	} else {
 		if (is_string($data)) {
+			$data = htmlentities($data, ENT_COMPAT, 'UTF-8', false);
 			$data = htmlspecialchars(strip_tags($data, '<username>'), ENT_NOQUOTES);
 			if ($fmdb->use_mysqli) {
 				return html_entity_decode(str_replace('\r\n', "\n", mysqli_real_escape_string($fmdb->dbh, $data)));
@@ -889,7 +890,7 @@ function getNameFromID($id, $table, $prefix, $field, $data, $account_id = null, 
 		}
 	}
 	
-	return false;
+	return null;
 }
 
 
@@ -1122,7 +1123,7 @@ function buildDashboard() {
 	require(ABSPATH . 'fm-includes/version.php');
 	$fm_new_version_available = isNewVersionAvailable($fm_name, $fm_version);
 	
-	if ($fm_new_version_available) {
+	if ($fm_new_version_available && is_array($fm_new_version_available)) {
 		$dashboard = <<<DASH
 	<div id="shadow_box" class="fullwidthbox">
 		<div id="shadow_container" class="fullwidthbox">
@@ -3280,7 +3281,7 @@ function runRemoteCommand($host_array, $command, $format = 'silent', $port = 22,
 		}
 
 		/** Test SSH authentication */
-		exec(findProgram('ssh') . " -T -i $temp_ssh_key -o 'StrictHostKeyChecking no' -p $port -l $ssh_user $host 'ls /usr/local/$fm_name/{$_SESSION['module']}/client.php'", $output, $rc);
+		exec(findProgram('ssh') . ' -T -i ' . escapeshellarg($temp_ssh_key) . " -o 'StrictHostKeyChecking no' -p $port -l " . escapeshellarg($ssh_user) . " $host 'ls " . escapeshellarg("/usr/local/$fm_name/{$_SESSION['module']}/client.php") . "'", $output, $rc);
 		if ($rc) {
 			/** Something went wrong */
 			if ($rc == 255 || $client_check == 'include') {
@@ -3298,7 +3299,7 @@ function runRemoteCommand($host_array, $command, $format = 'silent', $port = 22,
 		}
 		unset($output);
 
-		exec(findProgram('ssh') . " -T -i $temp_ssh_key -o 'StrictHostKeyChecking no' -p $port -l $ssh_user $host \"$command\"", $output, $rc);
+		exec(findProgram('ssh') . ' -T -i ' . escapeshellarg($temp_ssh_key) . " -o 'StrictHostKeyChecking no' -p $port -l " . escapeshellarg($ssh_user) . " $host \"" . escapeshellarg($command) . "\"", $output, $rc);
 	
 		if ($rc) {
 			$failures = true;
@@ -3633,7 +3634,7 @@ function createTempDir($subdir, $append = null) {
 	}
 	
 	$fm_temp_directory = '/' . ltrim(getOption('fm_temp_directory'), '/');
-	$tmp_dir = rtrim($fm_temp_directory, '/') . "/$subdir/";
+	$tmp_dir = escapeshellarg(rtrim($fm_temp_directory, '/') . "/$subdir/");
 	system('rm -rf ' . $tmp_dir);
 	$created = createDir($tmp_dir);
 
@@ -3881,6 +3882,12 @@ function getBrandLogo($size = 'sm_brand_img') {
 	global $fm_name;
 	
 	$branding_logo = getOption($size);
+
+	if ($branding_logo && strpos($branding_logo, 'http') === false) {
+		if (!file_exists(ABSPATH . $branding_logo)) {
+			$branding_logo = null;
+		}
+	}
 	
 	if (!$branding_logo) {
 		$branding_logo = $GLOBALS['RELPATH'] . 'fm-modules/' . $fm_name . '/images/fm.png';

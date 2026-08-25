@@ -1,3 +1,28 @@
+6.0.5 (2026-08-24)
+==================
+* Both   - [security] Fixed command injection vulnerabilities.
+* Server - [bug] Fixed a PHP fatal error when checking for updates. (Issue #741)
+* Server - [bug] Fixed login form CSS for small screens.
+* Server - [bug] Fixed the inability to disable 2FA when the user has a 2FA method set.
+* Server - [bug] Fixed the process-all button display when deleting or toggling item status.
+* Server - [bug] Fixed PHP deprecation warnings.
+* Server - [bug] Added a missing check to prevent the API from being used when API support is disabled.
+
+6.0.4 (2026-03-06)
+==================
+* Server - [security] Fixed stored XSS throughout application.
+* Server - [security] Fixed reflected XSS in the admin logs.
+* Server - [bug] Fixed PHP error when no user capabilities are set.
+* Server - [bug] Fixed large popup window CSS.
+* Server - [bug] Fixed upgrade process when custom logo is missing.
+* Server - [bug] Fixed dark mode CSS for dropdown menus.
+* Both   - [bug] Fixed client update method selection type. (Issue #739)
+
+6.0.3 (2026-01-06)
+==================
+* Server - [bug] Fixed logging of user and group changes.
+* Server - [bug] Fixed installer language text and CSS.
+
 6.0.2 (2025-12-29)
 ==================
 * Server - [bug] Fixed authentication after upgrade. (#730)

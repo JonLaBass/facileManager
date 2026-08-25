@@ -537,7 +537,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 				for ($i=0; $i < $control_config_count; $i++) {
 					if ($control_result[$i]->control_comment) {
 						$comment = wordwrap($control_result[$i]->control_comment, 50, "\n");
-						$control_config .= "\t// " . str_replace("\n", "\n// ", $comment) . "\n";
+						$control_config .= "\t// " . str_replace("\n", "\n\t// ", $comment) . "\n";
 						unset($comment);
 					}
 					$control_config .= "\tinet " . $control_result[$i]->control_ip;
@@ -565,7 +565,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 				for ($i=0; $i < $control_config_count; $i++) {
 					if ($control_result[$i]->control_comment) {
 						$comment = wordwrap($control_result[$i]->control_comment, 50, "\n");
-						$control_config .= "\t// " . str_replace("\n", "\n// ", $comment) . "\n";
+						$control_config .= "\t// " . str_replace("\n", "\n\t// ", $comment) . "\n";
 						unset($comment);
 					}
 					$control_config .= "\tinet " . $control_result[$i]->control_ip;
@@ -617,7 +617,11 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 						$config_result = $fmdb->last_result;
 						$view_config_count = $fmdb->num_rows;
 						for ($j=0; $j < $view_config_count; $j++) {
-							$view_config[$config_result[$j]->cfg_name] = array($config_result[$j]->cfg_data, $config_result[$j]->cfg_comment);
+							if (in_array($config_result[$j]->cfg_name, $multi_def_params)) {
+								$view_config[$config_result[$j]->cfg_name][] = array($config_result[$j]->cfg_data, $config_result[$j]->cfg_comment);
+							} else {
+								$view_config[$config_result[$j]->cfg_name] = array($config_result[$j]->cfg_data, $config_result[$j]->cfg_comment);
+							}
 						}
 						unset($config_result, $view_config_count);
 					} else $view_config = array();
@@ -652,12 +656,21 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 					unset($view_config, $server_view_config);
 
 					foreach ($config_array as $cfg_name => $cfg_data) {
-						list($cfg_info, $cfg_comment) = $cfg_data;
+						if (!is_array($cfg_data[0])) {
+							list($cfg_info, $cfg_comment) = $cfg_data;
 
-						$config .= $this->formatConfigOption($cfg_name, $cfg_info, $cfg_comment, $this->server_info, "\t");
+							$config .= $this->formatConfigOption($cfg_name, $cfg_info, $cfg_comment, $this->server_info, "\t");
 						
-						if ($cfg_name == 'recursion') {
-							$include_hint_zone_local = ($cfg_info == 'yes') ? true : false;
+							/** Include hint zone (root servers) */
+							if ($cfg_name == 'recursion') {
+								$include_hint_zone_local = ($cfg_info == 'yes') ? true : false;
+							}
+						} else {
+							/** Handle multiple instances if param */
+							foreach ($cfg_data as $k => $multi_cfg_data) {
+								list($cfg_info, $cfg_comment) = $multi_cfg_data;
+								$config .= $this->formatConfigOption($cfg_name, $cfg_info, $cfg_comment, $this->server_info, "\t");
+							}
 						}
 					}
 					unset($config_array);
@@ -1660,7 +1673,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 	 * @since 2.2
 	 * @package fmDNS
 	 *
-	 * @param array $raw_data Array containing named files and contents
+	 * @param array $files_array Array containing named files and contents
 	 * @param string|array $checks_to_run String or array of what checks to run
 	 * @return string|void
 	 */
@@ -1684,7 +1697,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 		}
 		
 		$fm_temp_directory = '/' . ltrim(getOption('fm_temp_directory'), '/');
-		$tmp_dir = rtrim($fm_temp_directory, '/') . '/' . $_SESSION['module'] . '_' . date("YmdHis") . '/';
+		$tmp_dir = rtrim($fm_temp_directory, '/') . '/' . escapeshellarg($_SESSION['module']) . '_' . date("YmdHis") . '/';
 		system('rm -rf ' . $tmp_dir);
 		
 		/** Create temporary directory structure */
@@ -1707,7 +1720,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 				$tmp_contents = preg_replace('/^\/\/(.+?)+/', '', $contents);
 				$tmp_contents = explode("};\n", trim($tmp_contents));
 				foreach($tmp_contents as $zone_def) {
-					if (strpos($zone_def, 'type master;') !== false) {
+					if (strpos($zone_def, 'type master;') !== false || strpos($zone_def, 'type primary;') !== false) {
 						preg_match('/^zone "(.+?)+/', $zone_def, $tmp_zone_def);
 						$tmp_zone_def = explode('"', $tmp_zone_def[0]);
 						preg_match('/file "(.+?)+/', trim($zone_def), $tmp_zone_def_file);
@@ -1731,7 +1744,7 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 		if (!$die) {
 			/** Run named-checkconf */
 			if (in_array('checkconf', $checks_to_run)) {
-				$named_checkconf_cmd = findProgram('sudo') . ' -n ' . $named_checkconf . ' -t ' . $tmp_dir . ' ' . $files_array['server_config_file'] . ' 2>&1';
+				$named_checkconf_cmd = findProgram('sudo') . ' -n ' . $named_checkconf . ' -t ' . $tmp_dir . ' ' . escapeshellarg($files_array['server_config_file']) . ' 2>&1';
 				exec($named_checkconf_cmd, $named_checkconf_results, $retval);
 				/** Remove key-directory statements for config checks */
 				foreach ($named_checkconf_results as $key => $val) {
@@ -1759,13 +1772,13 @@ class fm_module_buildconf extends fm_shared_module_buildconf {
 				if (!$retval) {
 					if (count($files_array['files']) == 1) {
 						$tmp_zone_file_array = array_keys($files_array['files']);
-						$zone_files['all'] = array(preg_replace('/.conf$/', '', $tmp_zone_file_array[0]) => $tmp_zone_file_array[0]);
+						$zone_files['all'] = array(preg_replace('/.hosts$/', '', $tmp_zone_file_array[0]) => $tmp_zone_file_array[0]);
 					}
 					$named_checkzone_results = '';
 					if (array($zone_files)) {
 						foreach ($zone_files as $view => $zones) {
 							foreach ($zones as $zone_name => $zone_file) {
-								$named_checkzone_cmd = findProgram('sudo') . ' -n ' . $named_checkzone . ' -t ' . $tmp_dir . ' ' . $zone_name . ' ' . $zone_file . ' 2>&1';
+								$named_checkzone_cmd = findProgram('sudo') . ' -n ' . $named_checkzone . ' -t ' . $tmp_dir . ' ' . escapeshellarg($zone_name) . ' ' . escapeshellarg($zone_file) . ' 2>&1';
 								exec($named_checkzone_cmd, $results, $retval);
 								if ($retval) {
 									$class = 'class="error"';
@@ -2377,7 +2390,7 @@ HTML;
 	 * @return null
 	 */
 	function moduleUpdateReloadFlags($server_serial_no, $post_data) {
-		global $fmdb, $__FM_CONFIG;
+		global $fmdb, $__FM_CONFIG, $fm_dns_zones;
 		
 		extract($post_data);
 		
@@ -2385,8 +2398,8 @@ HTML;
 			$this->setBuiltDomainIDs($server_serial_no, $built_domain_ids);
 		}
 		if (isset($reload_domain_ids)) {
-			$query = "DELETE FROM `fm_" . $__FM_CONFIG['fmDNS']['prefix'] . "track_reloads` WHERE `server_serial_no`='" . sanitize($server_serial_no) . "' AND domain_id IN (" . implode(',', array_unique($reload_domain_ids)) . ')';
-			$fmdb->query($query);
+			/** Remove reload flags */
+			$fm_dns_zones->removeZoneReload(sanitize($server_serial_no), array_unique($reload_domain_ids));
 			
 			/** Update domain_check_config */
 			$query = "UPDATE `fm_" . $__FM_CONFIG['fmDNS']['prefix'] . "domains` SET `domain_check_config`='no' WHERE domain_id IN (" . implode(',', array_unique($reload_domain_ids)) . ')';
@@ -2508,7 +2521,7 @@ HTML;
 		$dnssec_ksk = join(' ', $dnssec_ksk);
 		
 		/** Sign zone with all keys */
-		$dnssec_output = shell_exec('cd ' . escapeshellarg($tmp_dir) . ' && ' . $dnssec_signzone . ' -g -K ' . escapeshellarg($tmp_dir) . ' -o ' . escapeshellarg($domain->domain_name) . ' ' . $dnssec_ksk . ' -f ' . escapeshellarg($temp_zone_file) . '.signed -e ' . $dnssec_endtime . ' ' . escapeshellarg($temp_zone_file) . ' ' . escapeshellarg($dnssec_key_signing_array['ZSK'][0][0]) . ' 2>&1');
+		$dnssec_output = shell_exec('cd ' . $tmp_dir . ' && ' . $dnssec_signzone . ' -g -K ' . $tmp_dir . ' -o ' . escapeshellarg($domain->domain_name) . ' ' . $dnssec_ksk . ' -f ' . escapeshellarg($temp_zone_file) . '.signed -e ' . $dnssec_endtime . ' ' . escapeshellarg($temp_zone_file) . ' ' . escapeshellarg($dnssec_key_signing_array['ZSK'][0][0]) . ' 2>&1');
 		if (file_exists($temp_zone_file . '.signed')) {
 			$signed_zone = file_get_contents($temp_zone_file . '.signed');
 			$GLOBALS[$_SESSION['module']]['DNSSEC'][] = array('domain_id' => $domain->parent_domain_id, 'domain_dnssec_signed' => strtotime('now'));
@@ -2753,7 +2766,7 @@ RewriteRule "^/?(.*)"      "%s" [L,R,LE]
 			return str_replace(array('"', "'"), '', $fmdb->last_result[0]->cfg_data);
 		}
 
-		return null;
+		return '';
 	}
 
 

@@ -449,6 +449,11 @@ function installFM($proto, $compress) {
 
 	/** Handle the update method */
 	if (!$invoke_api) {
+		if (defined('METHOD')) {
+			$update_method = METHOD;
+		} else {
+			$update_method = null;
+		}
 		$data['server_update_method'] = processUpdateMethod($module_name, $update_method, $data, $url);
 
 		$raw_data = getPostData(str_replace('genserial', 'addserial', $url), $data);
@@ -924,14 +929,14 @@ function initWebRequest() {
 	if (isset($_POST['action'])) {
 		switch ($_POST['action']) {
 			case 'buildconf':
-				exec(findProgram('sudo') . ' ' . findProgram('php') . ' ' . dirname(__FILE__) . '/' . $_POST['module'] .  '/client.php buildconf' . $_POST['options'] . ' 2>&1', $output, $rc);
+				exec(findProgram('sudo') . ' ' . findProgram('php') . ' ' . escapeshellarg(dirname(__FILE__) . '/' . $_POST['module'] .  '/client.php buildconf' . $_POST['options']) . ' 2>&1', $output, $rc);
 				if ($rc) {
 					/** Something went wrong */
 					$output[] = 'Config build failed.';
 				}
 				break;
 			case 'upgrade':
-				exec(findProgram('sudo') . ' ' . findProgram('php') . ' ' . dirname(__FILE__) . '/' . $_POST['module'] . '/client.php upgrade 2>&1', $output);
+				exec(findProgram('sudo') . ' ' . findProgram('php') . ' ' . escapeshellarg(dirname(__FILE__) . '/' . $_POST['module'] . '/client.php upgrade') . ' 2>&1', $output);
 				break;
 			default:
 				/** Process module-specific requests */
@@ -1529,19 +1534,6 @@ function addServer($url, $data, $repeat = false) {
 	if (!isset($data['server_type']) && is_array($app) && count($app) > 1) {
 		$data['server_type'] = $app['server']['type'];
 		$data['server_version'] = $app['app_version'];
-	}
-
-	if (!$repeat) {
-		/** Add the server to the account */
-		$raw_data = getPostData(str_replace('genserial', 'addserial', $url), $data);
-		$raw_data = $data['compress'] ? @unserialize(gzuncompress($raw_data)) : @unserialize($raw_data);
-		if (!is_array($raw_data)) {
-			if (!$raw_data) echo "An error occurred\n";
-			else echo $raw_data;
-			exit(1);
-		}
-		
-		echo fM("Success\n");
 	}
 
 	return $data;

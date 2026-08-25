@@ -210,6 +210,11 @@
 			background: url('/fm-includes/extra/select2/select2.png') no-repeat 100% -22px, -moz-linear-gradient(center bottom, #343434 85%, #1d1d1d 99%);
 			background: url(/fm-includes/extra/select2/select2.png) no-repeat 100% -22px, linear-gradient(to bottom, #343434 85%, #1d1d1d 99%) 0 0;
 		}
+
+		/** Drop down with no search results */
+		.select2-results .select2-no-results, .select2-results .select2-searching, .select2-results .select2-ajax-error, .select2-results .select2-selection-limit {
+			background-color: #343434;
+		}
 	}
 }
 
@@ -1463,6 +1468,7 @@ a.delete:hover i {
 	margin: auto;
 	opacity: 1.0;
 	min-width: 500px;
+	max-width: 75%;
 	background-color: var(--form-popup-bg);
 	border: 1px solid #1e1e1e;
 	-webkit-border-radius: 6px;

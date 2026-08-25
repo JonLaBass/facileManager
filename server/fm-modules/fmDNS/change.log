@@ -1,3 +1,22 @@
+7.4.3 (2026-08-24)
+==================
+* Both   - [security] Fixed command injection vulnerabilities.
+* Server - [bug] Fixed PHP errors during server configuration builds.
+* Server - [bug] Fixed zone reloads and configuration builds for servers utilizing cron updates. (Issue #740)
+* Server - [bug] Fixed the missing "Append Domain" option when editing SOA records.
+* Server - [bug] Fixed syntax checks for cloned zones. (Issue #753)
+* Server - [bug] Fixed controls multi-line comment formatting.
+
+7.4.2 (2026-03-06)
+==================
+* Server - [security] Fixed stored XSS throughout application.
+* Server - [bug] Fixed API support for zone reloads. (Issue #732)
+* Server - [bug] Fixed an issue where valid duplicate configuration options could not be added. (Issue #738)
+
+7.4.1 (2026-01-06)
+==================
+* Server - [bug] Fixed PHP errors while editing HTTP Endpoints, TLS Connections, and DNSSEC Policies.
+
 7.4.0 (2025-12-26)
 ==================
 * Server - [security] Users without module permission can no longer access this module.
