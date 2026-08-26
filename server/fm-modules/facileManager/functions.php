@@ -3299,7 +3299,7 @@ function runRemoteCommand($host_array, $command, $format = 'silent', $port = 22,
 		}
 		unset($output);
 
-		exec(findProgram('ssh') . ' -T -i ' . escapeshellarg($temp_ssh_key) . " -o 'StrictHostKeyChecking no' -p $port -l " . escapeshellarg($ssh_user) . " $host \"" . escapeshellarg($command) . "\"", $output, $rc);
+		exec(findProgram('ssh') . ' -T -i ' . escapeshellarg($temp_ssh_key) . " -o 'StrictHostKeyChecking no' -p $port -l " . escapeshellarg($ssh_user) . " $host \"" . escapeshellarg($command) . '"', $output, $rc);
 	
 		if ($rc) {
 			$failures = true;
@@ -3634,8 +3634,8 @@ function createTempDir($subdir, $append = null) {
 	}
 	
 	$fm_temp_directory = '/' . ltrim(getOption('fm_temp_directory'), '/');
-	$tmp_dir = escapeshellarg(rtrim($fm_temp_directory, '/') . "/$subdir/");
-	system('rm -rf ' . $tmp_dir);
+	$tmp_dir = rtrim($fm_temp_directory, '/') . "/$subdir/";
+	system('rm -rf ' . escapeshellarg($tmp_dir));
 	$created = createDir($tmp_dir);
 
 	return array($tmp_dir, $created);
